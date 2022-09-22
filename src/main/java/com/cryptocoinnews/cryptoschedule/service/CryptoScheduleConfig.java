@@ -1,7 +1,9 @@
 package com.cryptocoinnews.cryptoschedule.service;
 
+import com.cryptocoinnews.cryptocoins.service.CryptoCoinsService;
 import com.cryptocoinnews.cryptoschedule.data.CryptoScheduleMapper;
 import com.cryptocoinnews.cryptoschedule.data.entity.CryptoSchedule;
+import com.cryptocoinnews.email.MailSenderService;
 import com.cryptocoinnews.scraper.CryptoCoinsScraper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +16,10 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.scheduling.support.CronTrigger;
 
+import javax.mail.MessagingException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -25,15 +30,17 @@ import java.util.concurrent.Executor;
 @AllArgsConstructor
 public class CryptoScheduleConfig implements SchedulingConfigurer {
     private final CryptoScheduleMapper cryptoScheduleMapper;
+    private final MailSenderService mailSenderService;
     private final CryptoCoinsScraper scraper;
+    private final CryptoCoinsService cryptoCoinsService;
 
     @Bean
     public Executor taskExecutor() {
         ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-        taskScheduler.setPoolSize(3);
+        taskScheduler.setPoolSize(1);
         taskScheduler.setThreadNamePrefix("TaskSchedulerThreadPool");
         taskScheduler.setErrorHandler(t -> {
-            log.error("Error in Crypto Scheduler");
+            log.error("Error in Crypto Scheduler" + t.getMessage());
         });
 
         return taskScheduler;
@@ -52,11 +59,24 @@ public class CryptoScheduleConfig implements SchedulingConfigurer {
         for (CryptoSchedule cryptoSchedule : cryptoScheduleList) {
             taskRegistrar.addTriggerTask(() -> {
                 try {
-                    scraper.getAndInsertTopTenCoins(LocalDateTime.now());
-                } catch (IOException e) {
+                    if (!cryptoSchedule.isExecuted()) {
+                        scraper.getAndInsertTopTenCoins(LocalDateTime.now());
+                        String fileName = scraper.writeTopTenCoinsToCsv(cryptoCoinsService.getTopTenCryptoCoins());
+                        mailSenderService.sendEmailWithAttachment(cryptoSchedule.getEmail(), "do_not_reply@cryptonews.bg", "Top Ten Crypto Coins Update",
+                                "Hello, " + cryptoSchedule.getFirstName(), fileName,
+                                fileName, "");
+
+                        cryptoSchedule.setExecuted(true);
+                        cryptoScheduleMapper.updateExecutedStatus(cryptoSchedule);
+
+                        Files.deleteIfExists(Path.of(fileName));
+                        log.info("Temp file deleted successfully!");
+                    } else
+                        log.info("CryptoSchedule was already executed for -> " + cryptoSchedule.getFirstName() + " "
+                                + cryptoSchedule.getLastName() + " " + cryptoSchedule.getEmail());
+                } catch (IOException | MessagingException e) {
                     log.error(e.getMessage());
                 }
-                log.info("Got top ten coins for the specified period and inserted them! Time: " + LocalDateTime.now());
             }, new CronTrigger(cryptoSchedule.getCron()));
         }
     }

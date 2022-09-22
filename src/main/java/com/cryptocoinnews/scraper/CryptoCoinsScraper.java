@@ -11,8 +11,11 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Service
@@ -56,11 +59,60 @@ public class CryptoCoinsScraper {
 
     private boolean insertCoinToDatabase(CryptoCoins coin) {
         try {
-                this.cryptoCoinsMapper.insertCryptoCoin(coin);
+            this.cryptoCoinsMapper.insertCryptoCoin(coin);
         } catch (Exception e) {
             log.error(e.getMessage());
             return false;
         }
         return true;
+    }
+
+    public String writeTopTenCoinsToCsv(List<CryptoCoins> topTenCryptoCoins) throws IOException {
+        File file = createCsvFile();
+        FileWriter fileWriter = new FileWriter(file);
+        try {
+            for (CryptoCoins coin : topTenCryptoCoins ) {
+                fileWriter.append(coin.toString());
+                fileWriter.append("\r\n");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            fileWriter.close();
+        }
+        fileWriter.close();
+        return file.getName();
+    }
+
+
+    private static File createCsvFile() throws IOException {
+        File file = new File("cryptoData.csv");
+        FileWriter fileWriter = new FileWriter(file);
+        //Adding headers to csv file
+        StringBuffer sb = new StringBuffer();
+        sb.append("Position");
+        sb.append(";");
+        sb.append("Name");
+        sb.append(";");
+        sb.append("Price");
+        sb.append(";");
+        sb.append("Hourly Percentage");
+        sb.append(";");
+        sb.append("Daily Percentage");
+        sb.append(";");
+        sb.append("Weekly Percentage");
+        sb.append(";");
+        sb.append("Market Cap");
+        sb.append(";");
+        sb.append("Daily Volume");
+        sb.append(";");
+        sb.append("Circulating Supply");
+        sb.append(";");
+        sb.append("Time Of Execution");
+        sb.append(";");
+        sb.append("\r\n");
+        fileWriter.append(sb);
+        fileWriter.close();
+        return file;
     }
 }

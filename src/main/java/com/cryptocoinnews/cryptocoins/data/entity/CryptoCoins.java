@@ -21,4 +21,13 @@ public class CryptoCoins {
     private String dailyVolume;
     private String circulatingSupply;
     private LocalDateTime timeOfExecution;
+
+    @Override
+    public String toString() {
+        return this.position  + ";" + this.name + ";" +  this.price
+                + ";" + this.hourlyPercentage + ";" + this.dailyPercentage
+                + ";" + this.weeklyPercentage + ";" + this.marketCap
+                + ";" + this.dailyVolume + ";" + this.circulatingSupply
+                + ";" + this.timeOfExecution;
+    }
 }

@@ -41,4 +41,7 @@ public interface CryptoCoinsMapper {
             ")"
     )
     boolean insertCryptoCoin(@Param("cryptoCoin") CryptoCoins cryptoCoin);
+
+    @Select("Select * from (SELECT * from cryptocoins order by id desc limit 0,10) as t order by id asc;")
+    List<CryptoCoins> getTopTenCoins();
 }

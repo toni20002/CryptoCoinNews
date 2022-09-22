@@ -16,4 +16,6 @@ public class CryptoCoinsService {
     public List<CryptoCoins> getAllCryptoCoins() {
         return this.cryptoCoinsMapper.getAll();
     }
+
+    public List<CryptoCoins> getTopTenCryptoCoins() { return this.cryptoCoinsMapper.getTopTenCoins(); }
 }
